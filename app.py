@@ -4,7 +4,9 @@ from selenium.webdriver.chrome.service import Service
 from bs4 import BeautifulSoup
 import time
 import pandas as pd
-import numpy as np
+
+# Importa o webdriver_manager para gerenciar o ChromeDriver
+from webdriver_manager.chrome import ChromeDriverManager
 
 def safe_float(value_str: str) -> float:
     """
@@ -19,15 +21,21 @@ def safe_float(value_str: str) -> float:
         return float(value_str)
     except ValueError:
         return 0.0
-    
+
 @st.cache_data(show_spinner=True, ttl=600)
 def scrape_data() -> pd.DataFrame:
-    service = Service('chromedriver.exe')
-
-    # Modo headless para não abrir a janela do Chrome
+    # Configura as opções do Chrome
     options = webdriver.ChromeOptions()
-    options.add_argument('headless')
-    driver = webdriver.Chrome(service=service, options=options)
+    options.add_argument('--headless')  # Modo headless
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
+    options.add_argument('--disable-gpu')
+    
+    # Se necessário, defina o caminho do binário do Chrome (em muitos ambientes Linux o Chromium já vem instalado)
+    # options.binary_location = '/usr/bin/chromium-browser'
+    
+    # Usa o webdriver_manager para baixar automaticamente o ChromeDriver adequado
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
     url = "https://www.fundsexplorer.com.br/ranking"  
     driver.get(url)
@@ -64,7 +72,7 @@ def scrape_data() -> pd.DataFrame:
             liquidez_float = safe_float(liquidez_str)
             pvp_float = safe_float(pvp_str)
             dividendo_float = safe_float(dividendo_str)
-            yield_float = safe_float(yield_str) * 12
+            yield_float = safe_float(yield_str) * 12  # Anualiza o yield (simplificado)
             soma_yield_3m_float = safe_float(soma_yield_3m_str)
             soma_yield_6m_float = safe_float(soma_yield_6m_str)
             soma_yield_12m_float = safe_float(soma_yield_12m_str)
@@ -115,9 +123,7 @@ def scrape_data() -> pd.DataFrame:
     df.loc[df['Ticker'] == 'ALZR11', 'Setor'] = 'Logística'
     df.loc[df['Ticker'] == 'RZTR11', 'Setor'] = 'Terras Agrícolas'
 
-    # Remova a transformação com capitalize e use title para manter o formato desejado
     df['Setor'] = df['Setor'].str.title()
-
     df = df[~df['Setor'].str.lower().str.contains('desenvolvimento')]
     df = df[~df['Setor'].str.lower().str.contains('indefinido')]
     df = df[~df['Setor'].str.lower().str.contains('fundo-de-fundos')]
@@ -145,17 +151,13 @@ def scrape_data() -> pd.DataFrame:
 
     return df
 
-
 def rank_2em1(df):
     df.sort_values(by='P/VP', ascending=True, inplace=True)
     df["Rank P/VP"] = range(1, 1 + len(df))
-
     df.sort_values(by='Yield', ascending=False, inplace=True)
     df["Rank DY"] = range(1, 1 + len(df))
-
     df["Rank 2em1"] = df["Rank P/VP"] + df["Rank DY"]
     df.sort_values(by='Rank 2em1', ascending=True, inplace=True)
-
 
 def main():
     st.set_page_config(
@@ -165,25 +167,20 @@ def main():
         initial_sidebar_state="expanded"
     )
 
-    # CSS customizado (como no seu código)
-    st.markdown(""" 
+    st.markdown("""
     <style>
-    /* Seu CSS aqui */
     .stApp {
         background-color: #1e1e1e;
     }
-    /* Outras regras... */
     </style>
     """, unsafe_allow_html=True)
 
     st.title("Método 2 em 1 para filtro de FIIs")
-    st.write("O método 2 em 1 é uma forma de filtrar FIIs baseado em dois critérios: P/VP e DY atual.")
-    st.write("O método ordena os FIIs de acordo com o P/VP e DY atual, mas não se esqueça de ler os RIs.")
+    st.write("O método 2 em 1 é uma forma de filtrar FIIs baseado em dois critérios: P/VP e DY atual. O método ordena os FIIs de acordo com o P/VP e DY atual, mas não se esqueça de ler os RIs.")
 
     # Chama o scraping imediatamente na inicialização
     df = scrape_data()
 
-    # Inputs de filtro
     col1, col2 = st.columns(2)
     with col1:
         dy_min = st.number_input("Dividend Yield Mín. (%)", value=7.0)
@@ -207,7 +204,6 @@ def main():
         label_visibility="visible"
     )
 
-    # Botão para filtrar os dados
     if st.button("Filtrar!"):
         rank_2em1(df)
         df_filtrado = df[
@@ -222,4 +218,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

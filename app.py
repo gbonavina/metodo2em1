@@ -30,7 +30,9 @@ def scrape_data() -> pd.DataFrame:
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
-        page.goto(url, wait_until="domcontentloaded", timeout=60000)
+        # Aumenta o timeout e espera pelo seletor específico
+        page.goto(url, timeout=60000, wait_until="domcontentloaded")
+        page.wait_for_selector("tbody.default-fiis-table__container__table__body.skeleton-content", timeout=60000)
         time.sleep(5)
         html = page.content()
         browser.close()
@@ -38,7 +40,7 @@ def scrape_data() -> pd.DataFrame:
     soup = BeautifulSoup(html, 'html.parser')
     table_body = soup.find('tbody', class_='default-fiis-table__container__table__body skeleton-content')
     rows = table_body.find_all('tr')
-
+    
     data = []
     for row in rows:
         cells = row.find_all('td')

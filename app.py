@@ -9,15 +9,11 @@ from bs4 import BeautifulSoup
 import time
 import pandas as pd
 import numpy as np
+import subprocess  # Para executar comandos externos
 
 def safe_float(value_str: str) -> float:
-    """
-    Converte uma string em float, removendo vírgulas, '%', etc.
-    Se a conversão falhar, retorna 0.0
-    """
     if not value_str:
         return 0.0
-    # Remove espaços, troca ',' por '.', remove '%'
     value_str = value_str.strip().replace(',', '.').replace('%', '')
     try:
         return float(value_str)
@@ -26,11 +22,16 @@ def safe_float(value_str: str) -> float:
 
 @st.cache_data(show_spinner=True, ttl=600)
 def scrape_data() -> pd.DataFrame:
+    # Tenta instalar o Chromium (caso ainda não tenha sido feito)
+    try:
+        subprocess.run(["playwright", "install", "chromium"], check=True, timeout=30000)
+    except Exception as e:
+        st.error(f"Erro ao instalar Chromium com Playwright: {e}")
+    
     url = "https://www.fundsexplorer.com.br/ranking"
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
-        # Aumenta o timeout e espera pelo seletor específico
         page.goto(url, timeout=60000, wait_until="domcontentloaded")
         page.wait_for_selector("tbody.default-fiis-table__container__table__body.skeleton-content", timeout=60000)
         time.sleep(5)

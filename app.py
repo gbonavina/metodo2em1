@@ -32,7 +32,7 @@ def scrape_data() -> pd.DataFrame:
     options.add_argument('--disable-gpu')
     
     # Se necessário, defina o caminho do binário do Chrome (em muitos ambientes Linux o Chromium já vem instalado)
-    # options.binary_location = '/usr/bin/chromium-browser'
+    options.binary_location = '/usr/bin/chromium-browser'
     
     # Usa o webdriver_manager para baixar automaticamente o ChromeDriver adequado
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)

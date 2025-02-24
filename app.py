@@ -1,6 +1,10 @@
+import sys
+import asyncio
+if sys.platform.startswith("win"):
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
 import streamlit as st
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
+from playwright.sync_api import sync_playwright
 from bs4 import BeautifulSoup
 import time
 import pandas as pd
@@ -19,22 +23,17 @@ def safe_float(value_str: str) -> float:
         return float(value_str)
     except ValueError:
         return 0.0
-    
+
 @st.cache_data(show_spinner=True, ttl=600)
 def scrape_data() -> pd.DataFrame:
-    service = Service('chromedriver.exe')
-
-    # Modo headless para não abrir a janela do Chrome
-    options = webdriver.ChromeOptions()
-    options.add_argument('headless')
-    driver = webdriver.Chrome(service=service, options=options)
-
-    url = "https://www.fundsexplorer.com.br/ranking"  
-    driver.get(url)
-    time.sleep(5)  
-
-    html = driver.page_source
-    driver.quit()
+    url = "https://www.fundsexplorer.com.br/ranking"
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page()
+        page.goto(url, wait_until="domcontentloaded", timeout=60000)
+        time.sleep(5)
+        html = page.content()
+        browser.close()
 
     soup = BeautifulSoup(html, 'html.parser')
     table_body = soup.find('tbody', class_='default-fiis-table__container__table__body skeleton-content')
@@ -59,7 +58,6 @@ def scrape_data() -> pd.DataFrame:
             media_yield_12m_str = cells[12].get("data-value", cells[12].get_text(strip=True))
             soma_yield_ano_corrente_str = cells[13].get("data-value", cells[13].get_text(strip=True))
             
-            # Converte cada coluna para float (ou 0.0 se não der)
             valor_float = safe_float(valor_str)
             liquidez_float = safe_float(liquidez_str)
             pvp_float = safe_float(pvp_str)
@@ -73,7 +71,6 @@ def scrape_data() -> pd.DataFrame:
             media_yield_12m_float = safe_float(media_yield_12m_str)
             soma_yield_ano_corrente_float = safe_float(soma_yield_ano_corrente_str)
 
-            # Se qualquer um desses for 0, pula a linha
             if (
                 pvp_float == 0 or
                 soma_yield_3m_float == 0 or
@@ -104,7 +101,6 @@ def scrape_data() -> pd.DataFrame:
 
     df = pd.DataFrame(data)
 
-    # Ajustes de setor
     df.loc[df['Ticker'] == 'CPSH11', 'Setor'] = 'Shoppings'
     df.loc[df['Ticker'] == 'KNRI11', 'Setor'] = 'Lajes Corporativas'
     df.loc[df['Ticker'] == 'VGHF11', 'Setor'] = 'Papéis'
@@ -115,9 +111,7 @@ def scrape_data() -> pd.DataFrame:
     df.loc[df['Ticker'] == 'ALZR11', 'Setor'] = 'Logística'
     df.loc[df['Ticker'] == 'RZTR11', 'Setor'] = 'Terras Agrícolas'
 
-    # Remova a transformação com capitalize e use title para manter o formato desejado
     df['Setor'] = df['Setor'].str.title()
-
     df = df[~df['Setor'].str.lower().str.contains('desenvolvimento')]
     df = df[~df['Setor'].str.lower().str.contains('indefinido')]
     df = df[~df['Setor'].str.lower().str.contains('fundo-de-fundos')]
@@ -145,17 +139,13 @@ def scrape_data() -> pd.DataFrame:
 
     return df
 
-
 def rank_2em1(df):
     df.sort_values(by='P/VP', ascending=True, inplace=True)
     df["Rank P/VP"] = range(1, 1 + len(df))
-
     df.sort_values(by='Yield', ascending=False, inplace=True)
     df["Rank DY"] = range(1, 1 + len(df))
-
     df["Rank 2em1"] = df["Rank P/VP"] + df["Rank DY"]
     df.sort_values(by='Rank 2em1', ascending=True, inplace=True)
-
 
 def main():
     st.set_page_config(
@@ -165,25 +155,19 @@ def main():
         initial_sidebar_state="expanded"
     )
 
-    # CSS customizado (como no seu código)
-    st.markdown(""" 
+    st.markdown("""
     <style>
-    /* Seu CSS aqui */
     .stApp {
         background-color: #1e1e1e;
     }
-    /* Outras regras... */
     </style>
     """, unsafe_allow_html=True)
 
     st.title("Método 2 em 1 para filtro de FIIs")
-    st.write("O método 2 em 1 é uma forma de filtrar FIIs baseado em dois critérios: P/VP e DY atual.")
-    st.write("O método ordena os FIIs de acordo com o P/VP e DY atual, mas não se esqueça de ler os RIs.")
+    st.write("O método 2 em 1 é uma forma de filtrar FIIs baseado em dois critérios: P/VP e DY atual. O método ordena os FIIs de acordo com o P/VP e DY atual, mas não se esqueça de ler os RIs.")
 
-    # Chama o scraping imediatamente na inicialização
     df = scrape_data()
 
-    # Inputs de filtro
     col1, col2 = st.columns(2)
     with col1:
         dy_min = st.number_input("Dividend Yield Mín. (%)", value=7.0)
@@ -207,7 +191,6 @@ def main():
         label_visibility="visible"
     )
 
-    # Botão para filtrar os dados
     if st.button("Filtrar!"):
         rank_2em1(df)
         df_filtrado = df[
@@ -222,4 +205,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

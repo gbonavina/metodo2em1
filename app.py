@@ -65,7 +65,7 @@ def scrape_data() -> pd.DataFrame:
             liquidez_float = safe_float(liquidez_str)
             pvp_float = safe_float(pvp_str)
             dividendo_float = safe_float(dividendo_str)
-            yield_float = ((1 + (safe_float(yield_str)/100)) * 12 - 1)
+            yield_float = ((1 + (safe_float(yield_str)/100)) * 12) - 1
             soma_yield_3m_float = safe_float(soma_yield_3m_str)
             soma_yield_6m_float = safe_float(soma_yield_6m_str)
             soma_yield_12m_float = safe_float(soma_yield_12m_str)

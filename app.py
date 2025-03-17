@@ -104,15 +104,15 @@ def scrape_data() -> pd.DataFrame:
 
     df = pd.DataFrame(data)
 
-    df.loc[df['Ticker'] == 'CPSH11', 'Setor'] = 'Shoppings'
-    df.loc[df['Ticker'] == 'KNRI11', 'Setor'] = 'Lajes Corporativas'
-    df.loc[df['Ticker'] == 'VGHF11', 'Setor'] = 'Papéis'
-    df.loc[df['Ticker'] == 'ICRI11', 'Setor'] = 'Papéis'
-    df.loc[df['Ticker'] == 'VGRI11', 'Setor'] = 'Imóveis Comerciais Outros'
-    df.loc[df['Ticker'] == 'HGRU11', 'Setor'] = 'Imóveis Comerciais Outros'
-    df.loc[df['Ticker'] == 'HGBL11', 'Setor'] = 'Logística'
-    df.loc[df['Ticker'] == 'ALZR11', 'Setor'] = 'Logística'
-    df.loc[df['Ticker'] == 'RZTR11', 'Setor'] = 'Terras Agrícolas'
+    # df.loc[df['Ticker'] == 'CPSH11', 'Setor'] = 'Shoppings'
+    # df.loc[df['Ticker'] == 'KNRI11', 'Setor'] = 'Lajes Corporativas'
+    # df.loc[df['Ticker'] == 'VGHF11', 'Setor'] = 'Papéis'
+    # df.loc[df['Ticker'] == 'ICRI11', 'Setor'] = 'Papéis'
+    # df.loc[df['Ticker'] == 'VGRI11', 'Setor'] = 'Imóveis Comerciais Outros'
+    # df.loc[df['Ticker'] == 'HGRU11', 'Setor'] = 'Imóveis Comerciais Outros'
+    # df.loc[df['Ticker'] == 'HGBL11', 'Setor'] = 'Logística'
+    # df.loc[df['Ticker'] == 'ALZR11', 'Setor'] = 'Logística'
+    # df.loc[df['Ticker'] == 'RZTR11', 'Setor'] = 'Terras Agrícolas'
 
     df['Setor'] = df['Setor'].str.title()
     df = df[~df['Setor'].str.lower().str.contains('desenvolvimento')]
